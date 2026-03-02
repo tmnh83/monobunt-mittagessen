@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MONOBUNT Mittagstisch</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0e0c;
+    --surface: #1a1815;
+    --surface2: #242220;
+    --border: #2e2b28;
+    --accent: #B3006B;
+    --accent-hover: #d4007e;
+    --accent-soft: rgba(179,0,107,0.12);
+    --accent-border: rgba(179,0,107,0.35);
+    --text: #f0ece4;
+    --text-muted: #8a8070;
+    --text-soft: #c8bfb0;
+    --red: #d45c3a;
+    --green: #6aab72;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; line-height: 1.6; }
+
+  header { padding: 26px 40px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--surface); }
+  .logo { display: flex; align-items: baseline; gap: 12px; }
+  .logo-name { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 900; letter-spacing: -0.5px; color: var(--accent); }
+  .logo-sub { font-size: 12px; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; }
+  .config-btn { font-size: 12px; color: var(--text-muted); background: var(--surface2); padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; transition: color 0.2s; }
+  .config-btn:hover { color: var(--accent); border-color: var(--accent-border); }
+
+  .tabs { display: flex; padding: 0 40px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .tab { padding: 13px 22px; font-size: 14px; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+  .tab:hover { color: var(--text-soft); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  main { max-width: 1200px; margin: 0 auto; padding: 36px 40px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .section-title { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .section-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+
+  .btn { padding: 9px 18px; border-radius: 8px; border: none; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.18s; white-space: nowrap; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--text-muted); }
+  .btn-danger { background: transparent; color: var(--red); border: none; padding: 3px 7px; font-size: 12px; cursor: pointer; border-radius: 4px; transition: background 0.15s; }
+  .btn-danger:hover { background: rgba(212,92,58,0.12); }
+  .btn-sm { padding: 6px 13px; font-size: 13px; }
+
+  /* ── WEEK GRID ── */
+  .week-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; gap: 12px; }
+
+  .grid-wrapper { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+
+  table.lunch-grid { width: 100%; border-collapse: collapse; min-width: 720px; }
+
+  .lunch-grid th {
+    background: var(--surface2); padding: 12px 14px;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-muted); font-weight: 500; text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .lunch-grid th.col-name { min-width: 150px; }
+  .lunch-grid th.col-day { text-align: center; min-width: 155px; }
+  .lunch-grid th.col-day .d-name { font-size: 13px; color: var(--text); font-weight: 600; text-transform: none; letter-spacing: 0; }
+  .lunch-grid th.col-day .d-date { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .lunch-grid th.col-day.is-today { background: var(--accent-soft); border-bottom-color: var(--accent-border); }
+  .lunch-grid th.col-day.is-today .d-name { color: var(--accent); }
+
+  .lunch-grid td { border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); vertical-align: middle; }
+  .lunch-grid td:last-child { border-right: none; }
+  .lunch-grid tr:last-child td { border-bottom: none; }
+
+  td.name-cell { padding: 11px 14px; background: var(--surface); font-size: 14px; font-weight: 500; white-space: nowrap; }
+  .name-inner { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+  td.entry-cell { background: var(--surface); text-align: center; padding: 7px 10px; }
+  td.entry-cell:hover { background: var(--surface2); }
+
+  .cell-filled {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--accent-soft); border: 1px solid var(--accent-border);
+    border-radius: 6px; padding: 5px 9px; font-size: 12px; font-weight: 500;
+    cursor: default; width: 100%; max-width: 138px; justify-content: space-between;
+  }
+  .cell-rest-name { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+  .cell-del { color: var(--text-muted); font-size: 11px; cursor: pointer; padding: 1px 3px; border-radius: 3px; flex-shrink: 0; transition: all 0.12s; }
+  .cell-del:hover { color: var(--red); background: rgba(212,92,58,0.15); }
+
+  .cell-empty {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 100%; max-width: 138px; height: 34px;
+    border: 1px dashed var(--border); border-radius: 6px;
+    color: var(--text-muted); font-size: 18px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .cell-empty:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+  tr.summary-row td { background: var(--surface2); padding: 8px 10px; border-top: 2px solid var(--border); }
+  tr.summary-row td.name-cell { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); background: var(--surface2); }
+  .summary-pills { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; min-height: 22px; align-items: center; }
+  .summary-pill { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: var(--accent-soft); border: 1px solid var(--accent-border); color: var(--text-soft); }
+
+  /* ── CALENDAR ── */
+  .cal-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
+  .cal-nav { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .cal-month { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 700; min-width: 200px; text-align: center; }
+  .calendar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+  .cal-day-header { text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); padding: 7px 0; font-weight: 500; }
+  .cal-day { border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; background: var(--surface2); border: 1px solid transparent; min-height: 54px; padding: 5px; }
+  .cal-day:hover { border-color: var(--accent); }
+  .cal-day.empty { background: transparent; cursor: default; border-color: transparent; opacity: 0.2; }
+  .cal-day.today { border-color: rgba(179,0,107,0.45); }
+  .cal-day.has-entries { background: var(--accent-soft); border-color: var(--accent-border); }
+  .cal-day.selected { background: var(--accent-soft); border-color: var(--accent); }
+  .cal-day-num { font-size: 14px; font-weight: 500; }
+  .cal-dot { display: flex; gap: 2px; margin-top: 3px; }
+  .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
+
+  .avail-list { display: flex; flex-direction: column; gap: 7px; margin-top: 18px; }
+  .avail-item { display: flex; align-items: center; justify-content: space-between; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; animation: fadeIn 0.2s ease; }
+  .avail-name { font-weight: 500; font-size: 14px; }
+  .avail-date { font-size: 13px; color: var(--text-muted); }
+
+  .summary-box { background: rgba(106,171,114,0.08); border: 1px solid rgba(106,171,114,0.22); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 22px; }
+  .summary-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--green); font-weight: 500; margin-bottom: 10px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 7px; }
+  .summary-item { background: var(--surface2); border-radius: 8px; padding: 9px 12px; border: 1px solid var(--border); }
+  .s-date { font-size: 13px; font-weight: 500; }
+  .s-count { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+  .s-names { font-size: 12px; color: var(--accent); margin-top: 3px; }
+
+  /* ── RESTAURANTS ── */
+  .restaurant-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px,1fr)); gap: 14px; }
+  .restaurant-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; transition: border-color 0.2s; }
+  .restaurant-card:hover { border-color: var(--accent-border); }
+  .restaurant-name { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; margin-bottom: 5px; }
+  .restaurant-note { font-size: 13px; color: var(--text-muted); margin-bottom: 10px; min-height: 16px; }
+  .restaurant-link { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--accent); text-decoration: none; transition: color 0.2s; }
+  .restaurant-link:hover { color: var(--accent-hover); }
+
+  /* ── MENUS ── */
+  .menu-date-header { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; color: var(--accent); margin: 22px 0 9px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .menu-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 13px 15px; margin-bottom: 7px; display: flex; gap: 12px; align-items: flex-start; }
+  .menu-restaurant-tag { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); font-weight: 600; white-space: nowrap; min-width: 100px; margin-top: 2px; }
+  .menu-text { font-size: 14px; color: var(--text-soft); flex: 1; white-space: pre-wrap; }
+  .menu-meta { font-size: 12px; color: var(--text-muted); text-align: right; white-space: nowrap; }
+
+  /* ── MODALS ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.78); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 26px; width: 100%; max-width: 440px; animation: slideUp 0.22s ease; }
+  .modal-title { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 700; margin-bottom: 16px; }
+  .modal-footer { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+
+  .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 13px; }
+  label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 500; }
+  input[type="text"], input[type="date"], textarea, select { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 9px 12px; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 14px; width: 100%; transition: border-color 0.2s; outline: none; }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; }
+
+  .config-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+  .config-modal-overlay.open { display: flex; }
+  .config-modal { background: var(--surface); border: 1px solid var(--accent-border); border-radius: 16px; padding: 28px; width: 100%; max-width: 500px; animation: slideUp 0.22s ease; }
+  .config-step { display: flex; gap: 12px; margin-bottom: 12px; }
+  .config-step-num { width: 24px; height: 24px; background: var(--accent); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+  .config-step-text { font-size: 13px; color: var(--text-soft); line-height: 1.6; }
+  .config-step-text strong { color: var(--text); }
+
+  .rest-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 4px; }
+  .rest-option { padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); font-size: 13px; cursor: pointer; transition: all 0.15s; text-align: center; }
+  .rest-option:hover { border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent); }
+
+  .status-bar { position: fixed; bottom: 20px; right: 20px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 15px; font-size: 13px; color: var(--text-soft); z-index: 50; opacity: 0; transform: translateY(8px); transition: all 0.25s; pointer-events: none; }
+  .status-bar.show { opacity: 1; transform: translateY(0); }
+  .status-bar.success { border-color: var(--green); color: var(--green); }
+  .status-bar.error { border-color: var(--red); color: var(--red); }
+
+  .empty-state { text-align: center; padding: 42px 20px; color: var(--text-muted); }
+  .empty-icon { font-size: 34px; margin-bottom: 9px; }
+  .loading { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 7px; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(-3px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes slideUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+
+  @media(max-width:640px) { header { padding: 16px 18px; } .tabs { padding: 0 18px; } main { padding: 22px 16px; } }
+</style>
+</head>
+<body>
+
+<!-- CONFIG MODAL -->
+<div class="config-modal-overlay" id="configModal">
+  <div class="config-modal">
+    <div style="font-family:'Playfair Display',serif;font-size:19px;font-weight:700;color:var(--accent);margin-bottom:14px;">⚙ Setup: Google Apps Script</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Einmalig konfigurieren – URL wird im Browser gespeichert.</p>
+    <div class="config-step"><div class="config-step-num">1</div><div class="config-step-text">Google Sheet öffnen → <strong>Erweiterungen → Apps Script</strong></div></div>
+    <div class="config-step"><div class="config-step-num">2</div><div class="config-step-text">Inhalt von <strong>Code.gs</strong> einfügen und speichern</div></div>
+    <div class="config-step"><div class="config-step-num">3</div><div class="config-step-text"><strong>Bereitstellen → Neue Bereitstellung</strong> → Typ: Web-App → Ausführen als: Ich → Zugriff: Jeder</div></div>
+    <div class="config-step"><div class="config-step-num">4</div><div class="config-step-text">Web-App-URL kopieren und unten einfügen</div></div>
+    <div class="form-group" style="margin-top:8px;">
+      <label>Web App URL</label>
+      <input type="text" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/..." />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeConfigModal()">Abbrechen</button>
+      <button class="btn btn-primary" onclick="saveScriptUrl()">Verbinden</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESTAURANT PICKER -->
+<div class="modal-overlay" id="restPickerModal">
+  <div class="modal">
+    <div class="modal-title">Restaurant wählen</div>
+    <div id="pickerContext" style="font-size:13px;color:var(--text-muted);margin-bottom:14px;"></div>
+    <div class="rest-picker" id="restPickerOptions"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeRestPicker()">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PERSON -->
+<div class="modal-overlay" id="addPersonModal">
+  <div class="modal">
+    <div class="modal-title">Person hinzufügen</div>
+    <div class="form-group">
+      <label>Name</label>
+      <input type="text" id="newPersonName" placeholder="z.B. Gerald" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('addPersonModal').classList.remove('open')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="submitAddPerson()">Hinzufügen</button>
+    </div>
+  </div>
+</div>
+
+<!-- AVAIL MODAL -->
+<div class="modal-overlay" id="availModal">
+  <div class="modal">
+    <div class="modal-title">Verfügbarkeit eintragen</div>
+    <div id="modalDateDisplay" style="font-size:14px;color:var(--accent);margin-bottom:14px;font-weight:500;"></div>
+    <div class="form-group">
+      <label>Dein Name</label>
+      <input type="text" id="availName" placeholder="z.B. Gerald" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeAvailModal()">Abbrechen</button>
+      <button class="btn btn-primary" onclick="submitAvailability()">Eintragen</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD MENU -->
+<div class="modal-overlay" id="menuModal">
+  <div class="modal">
+    <div class="modal-title">Tagesmenü eintragen</div>
+    <div class="form-group"><label>Restaurant</label><select id="menuRestaurant"></select></div>
+    <div class="form-group"><label>Datum</label><input type="date" id="menuDate" /></div>
+    <div class="form-group"><label>Menü</label><textarea id="menuText" placeholder="Suppe: Tomatencremesuppe&#10;HS 1: Schnitzel mit Pommes&#10;HS 2: Gemüselasagne"></textarea></div>
+    <div class="form-group"><label>Eingetragen von</label><input type="text" id="menuPerson" placeholder="Dein Name" /></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeMenuModal()">Abbrechen</button>
+      <button class="btn btn-primary" onclick="submitMenu()">Eintragen</button>
+    </div>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<header>
+  <div class="logo">
+    <span class="logo-name">MONOBUNT</span>
+    <span class="logo-sub">Mittagstisch</span>
+  </div>
+  <button class="config-btn" onclick="openConfigModal()">⚙ Konfigurieren</button>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="woche">🍽 Diese Woche</div>
+  <div class="tab" data-tab="verfuegbarkeit">📅 Terminplanung</div>
+  <div class="tab" data-tab="restaurants">🗺 Restaurants</div>
+  <div class="tab" data-tab="menus">📋 Tagesmenüs</div>
+</div>
+
+<main>
+
+  <!-- DIESE WOCHE -->
+  <div class="panel active" id="panel-woche">
+    <div class="week-header">
+      <div>
+        <div class="section-title">Diese Woche</div>
+        <div class="section-sub">Wer geht wo essen? Klicke auf + um ein Restaurant einzutragen.</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="openAddPersonModal()">+ Person</button>
+    </div>
+    <div class="grid-wrapper">
+      <table class="lunch-grid">
+        <thead id="gridHead"></thead>
+        <tbody id="gridBody"></tbody>
+      </table>
+      <div style="padding:9px 14px;border-top:1px solid var(--border);">
+        <button class="btn btn-ghost btn-sm" style="width:100%;text-align:center;" onclick="openAddPersonModal()">+ Person hinzufügen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TERMINPLANUNG -->
+  <div class="panel" id="panel-verfuegbarkeit">
+    <div class="section-title">Terminplanung</div>
+    <p class="section-sub">Für monatliche Termine – klicke auf einen Tag um dich einzutragen.</p>
+    <div class="cal-card">
+      <div class="cal-nav">
+        <button class="btn btn-ghost btn-sm" onclick="prevMonth()">← Zurück</button>
+        <div class="cal-month" id="calMonthLabel"></div>
+        <button class="btn btn-ghost btn-sm" onclick="nextMonth()">Weiter →</button>
+      </div>
+      <div class="calendar-grid" id="calGrid"></div>
+    </div>
+    <div id="bestDates"></div>
+    <div class="avail-list" id="availList">
+      <div class="empty-state"><div class="empty-icon">📭</div><div>Klicke auf einen Tag im Kalender</div></div>
+    </div>
+  </div>
+
+  <!-- RESTAURANTS -->
+  <div class="panel" id="panel-restaurants">
+    <div class="section-title">Stammrestaurants</div>
+    <p class="section-sub">Direktlinks zu Speisekarten und Menüquellen.</p>
+    <div class="restaurant-grid" id="restaurantGrid"><div class="empty-state"><span class="loading"></span> Lade...</div></div>
+  </div>
+
+  <!-- TAGESMENÜS -->
+  <div class="panel" id="panel-menus">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <div class="section-title">Tagesmenüs</div>
+      <button class="btn btn-primary btn-sm" onclick="openMenuModal()">+ Eintragen</button>
+    </div>
+    <p class="section-sub">Manuell eingetragene Mittagsmenüs (±7 Tage).</p>
+    <div id="menuList"><div class="empty-state"><span class="loading"></span> Lade...</div></div>
+  </div>
+
+</main>
+
+<div class="status-bar" id="statusBar"></div>
+
+<script>
+let SCRIPT_URL = localStorage.getItem('monobunt_script_url') || '';
+let verfuegbarkeit = [], restaurants = [], menus = [], lunchEntries = [];
+let persons = JSON.parse(localStorage.getItem('monobunt_persons') || '[]');
+let calYear = new Date().getFullYear(), calMonth = new Date().getMonth();
+let selectedCalDate = null, pickerCtx = null;
+
+const MONTHS = ['Jänner','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+const DAY_NAMES_LONG = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag'];
+const DAY_NAMES_SHORT = ['Mo','Di','Mi','Do','Fr'];
+
+function getWeekDays() {
+  const now = new Date(), dow = now.getDay();
+  const mon = new Date(now); mon.setDate(now.getDate() - ((dow + 6) % 7));
+  return Array.from({length:5}, (_,i) => { const d = new Date(mon); d.setDate(mon.getDate()+i); return d.toISOString().split('T')[0]; });
+}
+function todayStr() { return new Date().toISOString().split('T')[0]; }
+
+// ── INIT
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+  }));
+  document.getElementById('menuDate').value = todayStr();
+  renderCalendar(); renderGrid();
+  if (!SCRIPT_URL) openConfigModal(); else loadAll();
+
+  // Enter key on modals
+  document.getElementById('newPersonName').addEventListener('keydown', e => { if(e.key==='Enter') submitAddPerson(); });
+  document.getElementById('availName').addEventListener('keydown', e => { if(e.key==='Enter') submitAvailability(); });
+  document.getElementById('scriptUrlInput').addEventListener('keydown', e => { if(e.key==='Enter') saveScriptUrl(); });
+});
+
+function loadAll() { loadLunchEntries(); loadRestaurants(); loadMenus(); loadVerfuegbarkeit(); }
+
+// ── CONFIG
+function openConfigModal() { document.getElementById('scriptUrlInput').value = SCRIPT_URL; document.getElementById('configModal').classList.add('open'); }
+function closeConfigModal() { document.getElementById('configModal').classList.remove('open'); }
+function saveScriptUrl() {
+  const url = document.getElementById('scriptUrlInput').value.trim();
+  if (!url.startsWith('https://script.google.com')) { showStatus('Ungültige URL', 'error'); return; }
+  SCRIPT_URL = url; localStorage.setItem('monobunt_script_url', url);
+  closeConfigModal(); showStatus('Verbunden! Lade Daten...', 'success'); loadAll();
+}
+
+// ── API
+async function apiGet(action) { if (!SCRIPT_URL) { openConfigModal(); return null; } const r = await fetch(`${SCRIPT_URL}?action=${action}`); return r.json(); }
+async function apiPost(data) { if (!SCRIPT_URL) { openConfigModal(); return null; } const r = await fetch(SCRIPT_URL, {method:'POST',body:JSON.stringify(data)}); return r.json(); }
+
+// ── GRID
+async function loadLunchEntries() {
+  try { const d = await apiGet('getLunchEntries'); if (d && !d.error) { lunchEntries = d; renderGrid(); } } catch(e) {}
+}
+
+function renderGrid() {
+  const days = getWeekDays(), today = todayStr();
+
+  // HEAD
+  let h = '<tr><th class="col-name">Person</th>';
+  days.forEach((d,i) => {
+    const isToday = d === today;
+    const dt = new Date(d+'T12:00:00');
+    h += `<th class="col-day${isToday?' is-today':''}"><div class="d-name">${DAY_NAMES_LONG[i]}</div><div class="d-date">${dt.getDate()}.${dt.getMonth()+1}.</div></th>`;
+  });
+  document.getElementById('gridHead').innerHTML = h + '</tr>';
+
+  // BODY
+  let b = '';
+  persons.forEach(person => {
+    b += `<tr><td class="name-cell"><div class="name-inner"><span>${esc(person)}</span><button class="btn-danger" onclick="removePerson('${esc(person)}')">✕</button></div></td>`;
+    days.forEach(date => {
+      const entry = lunchEntries.find(e => e.person === person && e.date === date);
+      if (entry) {
+        b += `<td class="entry-cell"><div class="cell-filled"><span class="cell-rest-name" title="${esc(entry.restaurant_name)}">${esc(entry.restaurant_name)}</span><span class="cell-del" onclick="deleteLunchEntry('${entry.id}',event)">✕</span></div></td>`;
+      } else {
+        b += `<td class="entry-cell"><div class="cell-empty" onclick="openRestPicker('${esc(person)}','${date}')">+</div></td>`;
+      }
+    });
+    b += '</tr>';
+  });
+
+  // Summary
+  if (persons.length > 0) {
+    b += '<tr class="summary-row"><td class="name-cell">Zusammenfassung</td>';
+    days.forEach(date => {
+      const counts = {};
+      lunchEntries.filter(e => e.date === date && persons.includes(e.person)).forEach(e => { counts[e.restaurant_name] = (counts[e.restaurant_name]||0)+1; });
+      const pills = Object.entries(counts).map(([n,c]) => `<div class="summary-pill">${esc(n)} ×${c}</div>`).join('');
+      b += `<td><div class="summary-pills">${pills||'<span style="color:var(--text-muted);font-size:12px;">–</span>'}</div></td>`;
+    });
+    b += '</tr>';
+  }
+
+  document.getElementById('gridBody').innerHTML = b;
+}
+
+function openAddPersonModal() {
+  document.getElementById('newPersonName').value = '';
+  document.getElementById('addPersonModal').classList.add('open');
+  setTimeout(() => document.getElementById('newPersonName').focus(), 60);
+}
+function submitAddPerson() {
+  const name = document.getElementById('newPersonName').value.trim();
+  if (!name) return;
+  if (persons.includes(name)) { showStatus('Name bereits vorhanden', 'error'); return; }
+  persons.push(name); localStorage.setItem('monobunt_persons', JSON.stringify(persons));
+  document.getElementById('addPersonModal').classList.remove('open');
+  renderGrid(); showStatus(`${name} hinzugefügt`, 'success');
+}
+function removePerson(name) {
+  persons = persons.filter(p => p !== name); localStorage.setItem('monobunt_persons', JSON.stringify(persons));
+  renderGrid();
+}
+
+function openRestPicker(person, date) {
+  if (!restaurants.length) { showStatus('Restaurants werden noch geladen...', 'error'); return; }
+  pickerCtx = { person, date };
+  const dt = new Date(date+'T12:00:00');
+  document.getElementById('pickerContext').textContent = `${person} – ${dt.toLocaleDateString('de-AT',{weekday:'long',day:'numeric',month:'long'})}`;
+  document.getElementById('restPickerOptions').innerHTML = restaurants.map(r =>
+    `<div class="rest-option" onclick="selectRestaurant('${r.id}','${esc(r.name)}')">${esc(r.name)}</div>`).join('');
+  document.getElementById('restPickerModal').classList.add('open');
+}
+function closeRestPicker() { document.getElementById('restPickerModal').classList.remove('open'); pickerCtx = null; }
+
+async function selectRestaurant(restId, restName) {
+  if (!pickerCtx) return;
+  const { person, date } = pickerCtx;
+  closeRestPicker();
+  try {
+    const res = await apiPost({ action:'addLunchEntry', person, date, restaurant_id:restId, restaurant_name:restName });
+    if (res?.success) {
+      lunchEntries = lunchEntries.filter(e => !(e.person === person && e.date === date));
+      lunchEntries.push({ id:res.id, person, date, restaurant_id:restId, restaurant_name:restName });
+      renderGrid(); showStatus(`${person} → ${restName}`, 'success');
+    }
+  } catch(e) { showStatus('Fehler beim Speichern', 'error'); }
+}
+
+async function deleteLunchEntry(id, evt) {
+  evt.stopPropagation();
+  try {
+    const res = await apiPost({ action:'removeLunchEntry', id });
+    if (res?.success) { lunchEntries = lunchEntries.filter(e => e.id !== id); renderGrid(); showStatus('Eintrag entfernt', 'success'); }
+  } catch(e) {}
+}
+
+// ── VERFÜGBARKEIT
+async function loadVerfuegbarkeit() {
+  try { const d = await apiGet('getVerfuegbarkeit'); if (d && !d.error) { verfuegbarkeit = d; renderCalendar(); renderBestDates(); } } catch(e) {}
+}
+
+function renderCalendar() {
+  const label = document.getElementById('calMonthLabel');
+  label.textContent = `${MONTHS[calMonth]} ${calYear}`;
+  const today = todayStr();
+  let html = DAY_NAMES_SHORT.map(d => `<div class="cal-day-header">${d}</div>`).join('');
+  const firstDay = new Date(calYear, calMonth, 1);
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  let addedEmpty = false;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(calYear, calMonth, d);
+    const dow = (date.getDay()+6)%7;
+    if (dow > 4) continue;
+    if (!addedEmpty) {
+      for (let i = 0; i < dow; i++) html += '<div class="cal-day empty"></div>';
+      addedEmpty = true;
+    }
+    const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const entries = verfuegbarkeit.filter(v => v.datum === ds);
+    const cls = ['cal-day', entries.length?'has-entries':'', ds===today?'today':'', ds===selectedCalDate?'selected':''].filter(Boolean).join(' ');
+    const dots = entries.length ? `<div class="cal-dot">${entries.slice(0,5).map(()=>'<div class="dot"></div>').join('')}</div>` : '';
+    html += `<div class="${cls}" onclick="calDayClick('${ds}')"><span class="cal-day-num">${d}</span>${dots}</div>`;
+  }
+  document.getElementById('calGrid').innerHTML = html;
+}
+
+function calDayClick(ds) {
+  selectedCalDate = ds; renderCalendar(); renderAvailList(ds);
+  document.getElementById('modalDateDisplay').textContent = formatDate(ds);
+  document.getElementById('availModal').classList.add('open');
+  setTimeout(() => document.getElementById('availName').focus(), 60);
+}
+
+function renderAvailList(filter) {
+  const list = document.getElementById('availList');
+  const items = filter ? verfuegbarkeit.filter(v => v.datum === filter) : verfuegbarkeit;
+  if (!items.length) { list.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div>${filter?'Noch niemand für diesen Tag.':'Noch keine Einträge.'}</div></div>`; return; }
+  list.innerHTML = items.sort((a,b)=>a.name.localeCompare(b.name)).map(v =>
+    `<div class="avail-item"><div><div class="avail-name">${esc(v.name)}</div><div class="avail-date">${formatDate(v.datum)}</div></div><button class="btn btn-danger" onclick="deleteAvail('${v.id}')">✕</button></div>`
+  ).join('');
+}
+
+function renderBestDates() {
+  const box = document.getElementById('bestDates');
+  const today = todayStr();
+  const counts = {};
+  verfuegbarkeit.forEach(v => { if (v.datum >= today) { counts[v.datum] = counts[v.datum]||[]; counts[v.datum].push(v.name); } });
+  const sorted = Object.entries(counts).sort((a,b) => b[1].length-a[1].length).slice(0,6);
+  if (!sorted.length) { box.innerHTML=''; return; }
+  box.innerHTML = `<div class="summary-box"><div class="summary-title">✓ Beste Termine</div><div class="summary-grid">${
+    sorted.map(([date,names]) => `<div class="summary-item"><div class="s-date">${formatDate(date)}</div><div class="s-count">${names.length} Person${names.length!==1?'en':''}</div><div class="s-names">${names.join(', ')}</div></div>`).join('')
+  }</div></div>`;
+}
+
+function closeAvailModal() { document.getElementById('availModal').classList.remove('open'); }
+async function submitAvailability() {
+  const name = document.getElementById('availName').value.trim();
+  if (!name) { showStatus('Bitte Namen eingeben', 'error'); return; }
+  try {
+    const res = await apiPost({ action:'addVerfuegbarkeit', name, datum:selectedCalDate });
+    if (res?.success) {
+      verfuegbarkeit.push({ id:res.id, name, datum:selectedCalDate });
+      renderCalendar(); renderAvailList(selectedCalDate); renderBestDates();
+      closeAvailModal(); showStatus(`${name} eingetragen`, 'success');
+      document.getElementById('availName').value = '';
+    }
+  } catch(e) { showStatus('Fehler', 'error'); }
+}
+async function deleteAvail(id) {
+  try { const res = await apiPost({ action:'removeVerfuegbarkeit', id }); if (res?.success) { verfuegbarkeit = verfuegbarkeit.filter(v=>v.id!==id); renderCalendar(); renderAvailList(selectedCalDate); renderBestDates(); } } catch(e) {}
+}
+function prevMonth() { calMonth--; if (calMonth<0) { calMonth=11; calYear--; } selectedCalDate=null; renderCalendar(); }
+function nextMonth() { calMonth++; if (calMonth>11) { calMonth=0; calYear++; } selectedCalDate=null; renderCalendar(); }
+
+// ── RESTAURANTS
+async function loadRestaurants() {
+  try { const d = await apiGet('getRestaurants'); if (d && !d.error) { restaurants = d; renderRestaurants(); populateMenuSelect(); } } catch(e) {}
+}
+function renderRestaurants() {
+  document.getElementById('restaurantGrid').innerHTML = restaurants.map(r =>
+    `<div class="restaurant-card"><div class="restaurant-name">${esc(r.name)}</div><div class="restaurant-note">${esc(r.notizen||'')}</div>${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener" class="restaurant-link">🔗 Speisekarte</a>`:''}</div>`
+  ).join('');
+}
+function populateMenuSelect() {
+  document.getElementById('menuRestaurant').innerHTML = restaurants.map(r => `<option value="${r.id}" data-name="${esc(r.name)}">${esc(r.name)}</option>`).join('');
+}
+
+// ── MENÜS
+async function loadMenus() {
+  try { const d = await apiGet('getMenus'); if (d && !d.error) { menus = d; renderMenus(); } } catch(e) {}
+}
+function renderMenus() {
+  const list = document.getElementById('menuList');
+  const today = new Date(), s = new Date(today), e = new Date(today);
+  s.setDate(s.getDate()-7); e.setDate(e.getDate()+7);
+  const filtered = menus.filter(m => { const d=new Date(m.datum); return d>=s && d<=e; }).sort((a,b)=>b.datum.localeCompare(a.datum));
+  if (!filtered.length) { list.innerHTML='<div class="empty-state"><div class="empty-icon">🍜</div><div>Noch keine Menüs. Klicke "+ Eintragen".</div></div>'; return; }
+  const grouped = {};
+  filtered.forEach(m => { if (!grouped[m.datum]) grouped[m.datum]=[]; grouped[m.datum].push(m); });
+  list.innerHTML = Object.entries(grouped).sort((a,b)=>b[0].localeCompare(a[0])).map(([date,items]) =>
+    `<div class="menu-date-header">${formatDate(date)}</div>${items.map(m =>
+      `<div class="menu-item"><div class="menu-restaurant-tag">${esc(m.restaurant_name)}</div><div class="menu-text">${esc(m.menutext)}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;"><div class="menu-meta">${esc(m.eingetragen_von)}</div><button class="btn btn-danger btn-sm" onclick="deleteMenu('${m.id}')">✕</button></div></div>`
+    ).join('')}`).join('');
+}
+function openMenuModal() { document.getElementById('menuModal').classList.add('open'); }
+function closeMenuModal() { document.getElementById('menuModal').classList.remove('open'); }
+async function submitMenu() {
+  const sel = document.getElementById('menuRestaurant');
+  const restaurant_id = sel.value, restaurant_name = sel.options[sel.selectedIndex]?.dataset.name||'';
+  const datum = document.getElementById('menuDate').value;
+  const menutext = document.getElementById('menuText').value.trim();
+  const eingetragen_von = document.getElementById('menuPerson').value.trim();
+  if (!datum||!menutext||!eingetragen_von) { showStatus('Alle Felder ausfüllen', 'error'); return; }
+  try {
+    const res = await apiPost({ action:'addMenu', restaurant_id, restaurant_name, datum, menutext, eingetragen_von });
+    if (res?.success) { menus.push({ id:res.id, restaurant_id, restaurant_name, datum, menutext, eingetragen_von }); renderMenus(); closeMenuModal(); showStatus(`Menü eingetragen`, 'success'); document.getElementById('menuText').value=''; }
+  } catch(e) { showStatus('Fehler', 'error'); }
+}
+async function deleteMenu(id) {
+  try { const res = await apiPost({ action:'removeMenu', id }); if (res?.success) { menus=menus.filter(m=>m.id!==id); renderMenus(); } } catch(e) {}
+}
+
+// ── UTILS
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function formatDate(ds) { if (!ds) return ''; return new Date(ds+'T12:00:00').toLocaleDateString('de-AT',{weekday:'long',year:'numeric',month:'long',day:'numeric'}); }
+let statusTimeout;
+function showStatus(msg, type='') {
+  const bar = document.getElementById('statusBar');
+  bar.textContent=msg; bar.className='status-bar show '+type;
+  clearTimeout(statusTimeout); statusTimeout=setTimeout(()=>bar.classList.remove('show'),3200);
+}
+</script>
+</body>
+</html>
