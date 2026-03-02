@@ -638,8 +638,19 @@ function getCurrentWeek() {
 
 function weekLabel(w) {
   if (!w) return '';
-  const [year, kw] = w.split('-W');
-  return `KW ${kw} / ${year}`;
+  // Neues Format: "2026-W10"
+  if (w.includes('-W')) {
+    const [year, kw] = w.split('-W');
+    return `KW ${kw} / ${year}`;
+  }
+  // Altes Format: "2026-03-01" → ISO-Woche berechnen
+  const d = new Date(w + 'T12:00:00');
+  const tmp = new Date(d.valueOf());
+  tmp.setDate(tmp.getDate() + 4 - (tmp.getDay() || 7));
+  const yearStart = new Date(tmp.getFullYear(), 0, 1);
+  const kw = Math.ceil(((tmp - yearStart) / 86400000 + 1) / 7);
+  const dateStr = d.toLocaleDateString('de-AT', {day:'numeric', month:'numeric', year:'numeric'});
+  return `KW ${String(kw).padStart(2,'0')} / ${tmp.getFullYear()} <span style="font-size:11px;color:var(--text-muted);font-weight:400;">(${dateStr})</span>`;
 }
 
 function renderMenus() {
@@ -673,7 +684,16 @@ async function submitMenu() {
   } catch(e) { showStatus('Fehler', 'error'); }
 }
 async function deleteMenu(id) {
-  try { const res = await apiPost({ action:'removeMenu', id }); if (res?.success) { menus=menus.filter(m=>m.id!==id); renderMenus(); } } catch(e) {}
+  try {
+    const res = await apiPost({ action:'removeMenu', id });
+    if (res?.success) {
+      menus = menus.filter(m => m.id !== id);
+      renderMenus();
+      showStatus('Eintrag gelöscht', 'success');
+    } else {
+      showStatus('Fehler beim Löschen', 'error');
+    }
+  } catch(e) { showStatus('Fehler: ' + e.message, 'error'); }
 }
 
 // ── UTILS
