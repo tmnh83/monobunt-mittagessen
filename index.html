@@ -232,7 +232,7 @@
 <!-- ADD PERSON -->
 <div class="modal-overlay" id="addPersonModal">
   <div class="modal">
-    <div class="modal-title">Person hinzufügen</div>
+    <div class="modal-title">Wie heißt du?</div>
     <div class="form-group">
       <label>Name</label>
       <input type="text" id="newPersonName" placeholder="z.B. Gerald" />
@@ -299,7 +299,7 @@
         <div class="section-title">Diese Woche</div>
         <div class="section-sub">Wer geht wo essen? Klicke auf + um ein Restaurant einzutragen.</div>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="openAddPersonModal()">+ Person</button>
+      <button class="btn btn-primary btn-sm" onclick="openAddPersonModal()">👤 Mein Name</button>
     </div>
     <div class="grid-wrapper">
       <table class="lunch-grid">
@@ -335,9 +335,10 @@
 <div class="status-bar" id="statusBar"></div>
 
 <script>
-let SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxpa-pNjpLU989tcfFcqatqmH2rh53X7CZsc6dfOn4i4qZPeNPf8icE0yko0TzSbcKi/exec'; // hardcoded – kein Setup nötig
+let SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwrpUrIG7OvrYXTVgDFN4fe1wlNvpwPqsLqzu6ANLXTU0TFkAHVCw4NBMH_1UIVbawi/exec'; // hardcoded – kein Setup nötig
 let verfuegbarkeit = [], menus = [], lunchEntries = [];
-let persons = JSON.parse(localStorage.getItem('monobunt_persons') || '[]');
+let persons = []; // zentral aus Sheet
+let myName = localStorage.getItem('monobunt_myname') || '';
 
 // Restaurants sind lokal hinterlegt – kein Sheet-Load nötig
 const RESTAURANTS_DEFAULT = [
@@ -376,6 +377,9 @@ document.addEventListener('DOMContentLoaded', () => {
   renderGrid();
   loadRestaurants();
   loadAll();
+  if (!myName) {
+    setTimeout(() => openAddPersonModal(), 400);
+  }
 
   // Enter key on modals
   document.getElementById('newPersonName').addEventListener('keydown', e => { if(e.key==='Enter') submitAddPerson(); });
@@ -383,7 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('scriptUrlInput').addEventListener('keydown', e => { if(e.key==='Enter') saveScriptUrl(); });
 });
 
-function loadAll() { loadLunchEntries(); loadMenus(); }
+function loadAll() { loadPersons(); loadLunchEntries(); loadMenus(); }
 
 // ── CONFIG
 function openConfigModal() { document.getElementById('scriptUrlInput').value = SCRIPT_URL; document.getElementById('configModal').classList.add('open'); }
@@ -451,7 +455,7 @@ function renderGrid() {
   // BODY
   let b = '';
   persons.forEach(person => {
-    b += `<tr><td class="name-cell"><div class="name-inner"><span>${esc(person)}</span><button class="btn-danger" onclick="removePerson('${esc(person)}')">✕</button></div></td>`;
+    b += `<tr${person===myName?' style="background:var(--accent-soft)"':''}}><td class="name-cell"><div class="name-inner"><span>${esc(person)}${person===myName?'  <span style="font-size:10px;color:var(--accent);font-weight:600;">ICH</span>':''}</span><button class="btn-danger" onclick="removePerson('${esc(person)}')">✕</button></div></td>`;
     days.forEach(date => {
       const entry = lunchEntries.find(e => e.person === person && e.date === date);
       if (entry) {
@@ -478,22 +482,63 @@ function renderGrid() {
   document.getElementById('gridBody').innerHTML = b;
 }
 
+// ── PERSONS (zentral im Sheet) ─────────────────────────────────
+async function loadPersons() {
+  try {
+    const d = await apiGet('getPersons');
+    if (d && !d.error) {
+      persons = d.map(p => p.name);
+      renderGrid();
+      // myName in Liste aufnehmen falls noch nicht vorhanden
+      if (myName && !persons.includes(myName)) {
+        await apiPost({ action:'addPerson', name: myName });
+        persons.push(myName);
+        renderGrid();
+      }
+    }
+  } catch(e) {}
+}
+
 function openAddPersonModal() {
-  document.getElementById('newPersonName').value = '';
-  document.getElementById('addPersonModal').classList.add('open');
+  document.getElementById('newPersonName').value = myName || '';
+  // Label anpassen
+  const modal = document.getElementById('addPersonModal');
+  modal.querySelector('.modal-title').textContent = myName ? 'Mein Name' : 'Wie heißt du?';
+  modal.classList.add('open');
   setTimeout(() => document.getElementById('newPersonName').focus(), 60);
 }
-function submitAddPerson() {
+
+async function submitAddPerson() {
   const name = document.getElementById('newPersonName').value.trim();
   if (!name) return;
-  if (persons.includes(name)) { showStatus('Name bereits vorhanden', 'error'); return; }
-  persons.push(name); localStorage.setItem('monobunt_persons', JSON.stringify(persons));
-  document.getElementById('addPersonModal').classList.remove('open');
-  renderGrid(); showStatus(`${name} hinzugefügt`, 'success');
+  try {
+    if (!persons.includes(name)) {
+      const res = await apiPost({ action:'addPerson', name });
+      if (res?.success) {
+        persons.push(name);
+      } else {
+        showStatus('Fehler beim Speichern', 'error'); return;
+      }
+    }
+    myName = name;
+    localStorage.setItem('monobunt_myname', name);
+    document.getElementById('addPersonModal').classList.remove('open');
+    renderGrid();
+    showStatus(`Hallo ${name}!`, 'success');
+  } catch(e) { showStatus('Fehler: ' + e.message, 'error'); }
 }
-function removePerson(name) {
-  persons = persons.filter(p => p !== name); localStorage.setItem('monobunt_persons', JSON.stringify(persons));
-  renderGrid();
+
+async function removePerson(name) {
+  if (!confirm(`${name} wirklich aus der Liste entfernen?`)) return;
+  try {
+    const res = await apiPost({ action:'removePerson', name });
+    if (res?.success) {
+      persons = persons.filter(p => p !== name);
+      if (myName === name) { myName = ''; localStorage.removeItem('monobunt_myname'); }
+      renderGrid();
+      showStatus(`${name} entfernt`, 'success');
+    }
+  } catch(e) {}
 }
 
 function openRestPicker(person, date) {
