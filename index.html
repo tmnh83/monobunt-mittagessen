@@ -282,7 +282,6 @@
     <span class="logo-name">MONOBUNT</span>
     <span class="logo-sub">Mittagstisch</span>
   </div>
-  <button class="config-btn" onclick="openConfigModal()">⚙ Konfigurieren</button>
 </header>
 
 <div class="tabs">
@@ -336,7 +335,7 @@
 <div class="status-bar" id="statusBar"></div>
 
 <script>
-let SCRIPT_URL = localStorage.getItem('monobunt_script_url') || '';
+let SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxpa-pNjpLU989tcfFcqatqmH2rh53X7CZsc6dfOn4i4qZPeNPf8icE0yko0TzSbcKi/exec'; // hardcoded – kein Setup nötig
 let verfuegbarkeit = [], menus = [], lunchEntries = [];
 let persons = JSON.parse(localStorage.getItem('monobunt_persons') || '[]');
 
@@ -376,7 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('menuWeek').value = getCurrentWeek();
   renderGrid();
   loadRestaurants();
-  if (!SCRIPT_URL) openConfigModal(); else loadAll();
+  loadAll();
 
   // Enter key on modals
   document.getElementById('newPersonName').addEventListener('keydown', e => { if(e.key==='Enter') submitAddPerson(); });
