@@ -358,12 +358,19 @@ const MONTHS = ['Jänner','Februar','März','April','Mai','Juni','Juli','August'
 const DAY_NAMES_LONG = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag'];
 const DAY_NAMES_SHORT = ['Mo','Di','Mi','Do','Fr'];
 
+function dateToStr(d) {
+  // Lokales Datum als YYYY-MM-DD – KEIN toISOString() wegen UTC-Verschiebung
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
 function getWeekDays() {
   const now = new Date(), dow = now.getDay();
   const mon = new Date(now); mon.setDate(now.getDate() - ((dow + 6) % 7));
-  return Array.from({length:5}, (_,i) => { const d = new Date(mon); d.setDate(mon.getDate()+i); return d.toISOString().split('T')[0]; });
+  return Array.from({length:5}, (_,i) => { const d = new Date(mon); d.setDate(mon.getDate()+i); return dateToStr(d); });
 }
-function todayStr() { return new Date().toISOString().split('T')[0]; }
+function todayStr() { return dateToStr(new Date()); }
 
 // ── INIT
 document.addEventListener('DOMContentLoaded', () => {
