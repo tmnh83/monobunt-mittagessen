@@ -264,7 +264,7 @@
   <div class="modal">
     <div class="modal-title">Tagesmenü eintragen</div>
     <div class="form-group"><label>Restaurant</label><select id="menuRestaurant"></select></div>
-    <div class="form-group"><label>Datum</label><input type="date" id="menuDate" /></div>
+    <div class="form-group"><label>Kalenderwoche</label><input type="week" id="menuWeek" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'Inter',sans-serif;font-size:14px;width:100%;outline:none;" /></div>
     <div class="form-group"><label>Menü</label><textarea id="menuText" placeholder="Suppe: Tomatencremesuppe&#10;HS 1: Schnitzel mit Pommes&#10;HS 2: Gemüselasagne"></textarea></div>
     <div class="form-group"><label>Eingetragen von</label><input type="text" id="menuPerson" placeholder="Dein Name" /></div>
     <div class="modal-footer">
@@ -286,7 +286,6 @@
 
 <div class="tabs">
   <div class="tab active" data-tab="woche">🍽 Diese Woche</div>
-  <div class="tab" data-tab="verfuegbarkeit">📅 Terminplanung</div>
   <div class="tab" data-tab="restaurants">🗺 Restaurants</div>
   <div class="tab" data-tab="menus">📋 Tagesmenüs</div>
 </div>
@@ -313,23 +312,6 @@
     </div>
   </div>
 
-  <!-- TERMINPLANUNG -->
-  <div class="panel" id="panel-verfuegbarkeit">
-    <div class="section-title">Terminplanung</div>
-    <p class="section-sub">Für monatliche Termine – klicke auf einen Tag um dich einzutragen.</p>
-    <div class="cal-card">
-      <div class="cal-nav">
-        <button class="btn btn-ghost btn-sm" onclick="prevMonth()">← Zurück</button>
-        <div class="cal-month" id="calMonthLabel"></div>
-        <button class="btn btn-ghost btn-sm" onclick="nextMonth()">Weiter →</button>
-      </div>
-      <div class="calendar-grid" id="calGrid"></div>
-    </div>
-    <div id="bestDates"></div>
-    <div class="avail-list" id="availList">
-      <div class="empty-state"><div class="empty-icon">📭</div><div>Klicke auf einen Tag im Kalender</div></div>
-    </div>
-  </div>
 
   <!-- RESTAURANTS -->
   <div class="panel" id="panel-restaurants">
@@ -390,8 +372,8 @@ document.addEventListener('DOMContentLoaded', () => {
     t.classList.add('active');
     document.getElementById('panel-' + t.dataset.tab).classList.add('active');
   }));
-  document.getElementById('menuDate').value = todayStr();
-  renderCalendar(); renderGrid();
+  document.getElementById('menuWeek').value = getCurrentWeek();
+  renderGrid();
   loadRestaurants();
   if (!SCRIPT_URL) openConfigModal(); else loadAll();
 
@@ -401,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('scriptUrlInput').addEventListener('keydown', e => { if(e.key==='Enter') saveScriptUrl(); });
 });
 
-function loadAll() { loadLunchEntries(); loadMenus(); loadVerfuegbarkeit(); }
+function loadAll() { loadLunchEntries(); loadMenus(); }
 
 // ── CONFIG
 function openConfigModal() { document.getElementById('scriptUrlInput').value = SCRIPT_URL; document.getElementById('configModal').classList.add('open'); }
@@ -414,32 +396,8 @@ function saveScriptUrl() {
 }
 
 // ── API
-// JSONP – einziger zuverlässiger CORS-Workaround für Google Apps Script von externen Domains
-function jsonpRequest(url) {
-  return new Promise((resolve, reject) => {
-    const cbName = 'cb_' + Math.random().toString(36).slice(2);
-    const script = document.createElement('script');
-    const timeout = setTimeout(() => {
-      delete window[cbName]; document.body.removeChild(script);
-      reject(new Error('Timeout'));
-    }, 20000);
-    window[cbName] = (data) => {
-      clearTimeout(timeout); delete window[cbName]; document.body.removeChild(script);
-      resolve(data);
-    };
-    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
-    script.onerror = () => { clearTimeout(timeout); delete window[cbName]; reject(new Error('Script error')); };
-    document.body.appendChild(script);
-  });
-}
-async function apiGet(action) {
-  if (!SCRIPT_URL) { openConfigModal(); return null; }
-  return jsonpRequest(`${SCRIPT_URL}?action=${encodeURIComponent(action)}`);
-}
-async function apiPost(data) {
-  if (!SCRIPT_URL) { openConfigModal(); return null; }
-  return jsonpRequest(`${SCRIPT_URL}?payload=${encodeURIComponent(JSON.stringify(data))}`);
-}
+async function apiGet(action) { if (!SCRIPT_URL) { openConfigModal(); return null; } const r = await fetch(`${SCRIPT_URL}?action=${action}`); return r.json(); }
+async function apiPost(data) { if (!SCRIPT_URL) { openConfigModal(); return null; } const r = await fetch(SCRIPT_URL, {method:'POST',body:JSON.stringify(data)}); return r.json(); }
 
 // ── GRID
 async function loadLunchEntries() {
@@ -624,7 +582,8 @@ async function loadRestaurants() {
   try { const d = await apiGet("getRestaurants"); if (d && !d.error && d.length) { restaurants = d; renderRestaurants(); populateMenuSelect(); } } catch(e) {}
 }
 function renderRestaurants() {
-  document.getElementById('restaurantGrid').innerHTML = restaurants.map(r =>
+  const sorted = [...restaurants].sort((a,b) => a.name.localeCompare(b.name, 'de'));
+  document.getElementById('restaurantGrid').innerHTML = sorted.map(r =>
     `<div class="restaurant-card"><div class="restaurant-name">${esc(r.name)}</div><div class="restaurant-note">${esc(r.notizen||'')}</div>${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener" class="restaurant-link">🔗 Speisekarte</a>`:''}</div>`
   ).join('');
 }
@@ -636,25 +595,43 @@ function populateMenuSelect() {
 async function loadMenus() {
   try { const d = await apiGet('getMenus'); if (d && !d.error) { menus = d; renderMenus(); } } catch(e) {}
 }
+function getCurrentWeek() {
+  const d = new Date();
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate() + 4 - (d.getDay()||7));
+  const yearStart = new Date(d.getFullYear(),0,1);
+  const week = Math.ceil((((d-yearStart)/86400000)+1)/7);
+  return `${d.getFullYear()}-W${String(week).padStart(2,'0')}`;
+}
+
+function weekLabel(w) {
+  if (!w) return '';
+  const [year, kw] = w.split('-W');
+  return `KW ${kw} / ${year}`;
+}
+
 function renderMenus() {
   const list = document.getElementById('menuList');
-  const today = new Date(), s = new Date(today), e = new Date(today);
-  s.setDate(s.getDate()-7); e.setDate(e.getDate()+7);
-  const filtered = menus.filter(m => { const d=new Date(m.datum); return d>=s && d<=e; }).sort((a,b)=>b.datum.localeCompare(a.datum));
-  if (!filtered.length) { list.innerHTML='<div class="empty-state"><div class="empty-icon">🍜</div><div>Noch keine Menüs. Klicke "+ Eintragen".</div></div>'; return; }
+  if (!menus.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🍜</div><div>Noch keine Menüs. Klicke "+ Eintragen".</div></div>';
+    return;
+  }
   const grouped = {};
-  filtered.forEach(m => { if (!grouped[m.datum]) grouped[m.datum]=[]; grouped[m.datum].push(m); });
-  list.innerHTML = Object.entries(grouped).sort((a,b)=>b[0].localeCompare(a[0])).map(([date,items]) =>
-    `<div class="menu-date-header">${formatDate(date)}</div>${items.map(m =>
-      `<div class="menu-item"><div class="menu-restaurant-tag">${esc(m.restaurant_name)}</div><div class="menu-text">${esc(m.menutext)}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;"><div class="menu-meta">${esc(m.eingetragen_von)}</div><button class="btn btn-danger btn-sm" onclick="deleteMenu('${m.id}')">✕</button></div></div>`
-    ).join('')}`).join('');
+  menus.forEach(m => { if (!grouped[m.datum]) grouped[m.datum]=[]; grouped[m.datum].push(m); });
+  list.innerHTML = Object.entries(grouped)
+    .sort((a,b) => b[0].localeCompare(a[0]))
+    .map(([week, items]) =>
+      `<div class="menu-date-header">${weekLabel(week)}</div>${items.map(m =>
+        `<div class="menu-item"><div class="menu-restaurant-tag">${esc(m.restaurant_name)}</div><div class="menu-text">${esc(m.menutext)}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;"><div class="menu-meta">${esc(m.eingetragen_von)}</div><button class="btn btn-danger btn-sm" onclick="deleteMenu('${m.id}')">✕</button></div></div>`
+      ).join('')}`
+    ).join('');
 }
 function openMenuModal() { document.getElementById('menuModal').classList.add('open'); }
 function closeMenuModal() { document.getElementById('menuModal').classList.remove('open'); }
 async function submitMenu() {
   const sel = document.getElementById('menuRestaurant');
   const restaurant_id = sel.value, restaurant_name = sel.options[sel.selectedIndex]?.dataset.name||'';
-  const datum = document.getElementById('menuDate').value;
+  const datum = document.getElementById('menuWeek').value;
   const menutext = document.getElementById('menuText').value.trim();
   const eingetragen_von = document.getElementById('menuPerson').value.trim();
   if (!datum||!menutext||!eingetragen_von) { showStatus('Alle Felder ausfüllen', 'error'); return; }
